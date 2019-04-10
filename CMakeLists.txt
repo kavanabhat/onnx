@@ -33,6 +33,10 @@ endif(NOT MSVC)
 
 set(ONNX_ROOT ${PROJECT_SOURCE_DIR})
 
+if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  set(CMAKE_NO_SYSTEM_FROM_IMPORTED 1)
+endif()
+
 # Read ONNX version
 file(READ "${PROJECT_SOURCE_DIR}/VERSION_NUMBER" ONNX_VERSION)
 string(STRIP "${ONNX_VERSION}" ONNX_VERSION)
@@ -287,7 +291,12 @@ else()
 endif()
 add_onnx_global_defines(onnx_proto)
 
-add_library(onnx ${onnx_src})
+if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  add_library(onnx OBJECT ${onnx_src})
+else()
+  add_library(onnx ${onnx_src})
+endif()
+
 target_include_directories(onnx PUBLIC
   $<BUILD_INTERFACE:${ONNX_ROOT}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
@@ -340,6 +349,9 @@ if(BUILD_ONNX_PYTHON)
     # In MSVC, we will add whole archive in default
     target_link_libraries(onnx_cpp2py_export
                           PRIVATE -WHOLEARCHIVE:$<TARGET_FILE:onnx>)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    target_sources(onnx_cpp2py_export
+                          PRIVATE $<TARGET_OBJECTS:onnx>)
   else()
     # Assume everything else is like gcc
     target_link_libraries(onnx_cpp2py_export
